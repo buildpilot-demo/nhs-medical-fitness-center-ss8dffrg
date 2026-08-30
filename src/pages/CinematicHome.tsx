@@ -1,19 +1,17 @@
 import { useEffect, useRef } from "react";
 import { siteConfig } from "../site.config";
 import { EnquirySection } from "../components/EnquirySection";
-import type { CinematicSiteConfig } from "../types/site-config";
+import type { CinematicSiteConfig, SiteProductItem } from "../types/site-config";
 
 // The single-page, three-section cinematic experience described in
 // docs/DEVIN_3D_WEBSITE_SPEC.md: a scroll-scrubbed photo-sequence hero, a
 // scroll-driven horizontal products/services rail, and a normal-flow
-// enquiry section. This is a working baseline built entirely from
-// siteConfig — Devin's job per build is to take this further (P1 polish:
-// chapter fades, grain, spacing) without introducing animation/3D
-// libraries or migrating frameworks (see the "Build constraints" section of
-// the spec). Only rendered by App.tsx when siteConfig.variant === "cinematic".
+// enquiry section. Everything is driven by siteConfig — no animation, 3D,
+// or carousel libraries, and no interception of wheel/touch input. Only
+// rendered by App.tsx when siteConfig.variant === "cinematic".
 export function CinematicHome({ config }: { config: CinematicSiteConfig }) {
   useEffect(() => {
-    document.title = siteConfig.businessName;
+    document.title = `${siteConfig.businessName} — ${siteConfig.purpose}`;
   }, []);
 
   const reducedMotion = typeof window !== "undefined"
@@ -49,6 +47,7 @@ function CinematicHero({ config, reducedMotion }: { config: CinematicSiteConfig;
     const dpr = Math.min(window.devicePixelRatio || 1, hero.maxDevicePixelRatio);
     const width = canvas.clientWidth;
     const height = canvas.clientHeight;
+    if (width === 0 || height === 0) return;
     if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
       canvas.width = Math.round(width * dpr);
       canvas.height = Math.round(height * dpr);
@@ -56,6 +55,8 @@ function CinematicHero({ config, reducedMotion }: { config: CinematicSiteConfig;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const narrow = width < hero.narrowViewportBreakpoint;
     const focal = narrow ? hero.focalPoint.narrow : hero.focalPoint.wide;
+    // Cover-style fit: scale up to fill both axes, then bias the overflow
+    // by the configured focal point instead of always centring.
     const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
     const drawWidth = image.naturalWidth * scale;
     const drawHeight = image.naturalHeight * scale;
@@ -133,9 +134,8 @@ function CinematicHero({ config, reducedMotion }: { config: CinematicSiteConfig;
       chapterRefs.current.forEach((element, index) => {
         if (!element) return;
         const chapter = hero.chapters[index];
-        const visible = progress >= chapter.from && progress <= chapter.to;
-        element.style.opacity = visible ? "1" : "0";
-        element.style.pointerEvents = visible ? "auto" : "none";
+        element.style.opacity = String(chapterOpacity(progress, chapter.from, chapter.to));
+        element.style.pointerEvents = progress >= chapter.from && progress <= chapter.to ? "auto" : "none";
       });
     };
 
@@ -144,7 +144,9 @@ function CinematicHero({ config, reducedMotion }: { config: CinematicSiteConfig;
       ticking = true;
       requestAnimationFrame(update);
     };
-    const onResize = () => { drawFrame(currentFrameRef.current); };
+    const onResize = () => {
+      requestAnimationFrame(() => drawFrame(currentFrameRef.current));
+    };
 
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onResize);
@@ -158,16 +160,12 @@ function CinematicHero({ config, reducedMotion }: { config: CinematicSiteConfig;
 
   if (reducedMotion) {
     return (
-      <section className="hero-static">
+      <section className="hero-static" aria-labelledby="hero-heading">
         <img className="hero-static__poster" src={hero.poster} alt="" />
         <div className="hero-static__chapters">
-          {hero.chapters.map((chapter) => (
+          {hero.chapters.map((chapter, index) => (
             <div key={chapter.id} className="hero-chapter" data-align={chapter.align}>
-              <p className="eyebrow">{chapter.eyebrow}</p>
-              <h1>{chapter.heading}</h1>
-              <p className="muted">{chapter.body}</p>
-              {chapter.primaryCta && <a className="btn" href={chapter.primaryCta.href}>{chapter.primaryCta.label}</a>}
-              {chapter.secondaryCta && <a className="btn btn-secondary" href={chapter.secondaryCta.href}>{chapter.secondaryCta.label}</a>}
+              <ChapterCopy chapter={chapter} isFirst={index === 0} />
             </div>
           ))}
         </div>
@@ -176,28 +174,78 @@ function CinematicHero({ config, reducedMotion }: { config: CinematicSiteConfig;
   }
 
   return (
-    <section ref={trackRef} className="hero-track" style={{ height: `${hero.scrollHeightVh}vh` }}>
+    <section
+      ref={trackRef}
+      className="hero-track"
+      aria-labelledby="hero-heading"
+      style={{ height: `${hero.scrollHeightVh}vh` }}
+    >
       <div className="hero-sticky">
         <canvas ref={canvasRef} className="hero-canvas" aria-hidden="true" />
-        {hero.chapters.map((chapter, index) => (
-          <div
-            key={chapter.id}
-            ref={(element) => { chapterRefs.current[index] = element; }}
-            className="hero-chapter"
-            data-align={chapter.align}
-            style={{ opacity: index === 0 ? 1 : 0 }}
-          >
-            <p className="eyebrow">{chapter.eyebrow}</p>
-            <h1>{chapter.heading}</h1>
-            <p className="muted">{chapter.body}</p>
-            {chapter.primaryCta && <a className="btn" href={chapter.primaryCta.href}>{chapter.primaryCta.label}</a>}
-            {chapter.secondaryCta && <a className="btn btn-secondary" href={chapter.secondaryCta.href}>{chapter.secondaryCta.label}</a>}
-            {chapter.showScrollCue && <p className="hero-scroll-cue" aria-hidden="true">Scroll to discover</p>}
-          </div>
-        ))}
+        <div className="hero-scrim" aria-hidden="true" />
+        <div className="hero-stage">
+          {hero.chapters.map((chapter, index) => (
+            <div
+              key={chapter.id}
+              ref={(element) => { chapterRefs.current[index] = element; }}
+              className="hero-chapter"
+              data-align={chapter.align}
+              style={{ opacity: index === 0 ? 1 : 0, pointerEvents: index === 0 ? "auto" : "none" }}
+            >
+              <ChapterCopy chapter={chapter} isFirst={index === 0} />
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
+}
+
+// Crossfade a chapter in and out over a short ramp at each end of its
+// configured progress range, so neighbouring chapters overlap smoothly.
+function chapterOpacity(progress: number, from: number, to: number): number {
+  const ramp = Math.min(0.06, Math.max(0.02, (to - from) / 4));
+  if (progress <= from - ramp || progress >= to + ramp) return 0;
+  if (progress < from) return (progress - (from - ramp)) / ramp;
+  if (progress > to) return ((to + ramp) - progress) / ramp;
+  return 1;
+}
+
+function ChapterCopy({
+  chapter,
+  isFirst,
+}: {
+  chapter: CinematicSiteConfig["hero"]["chapters"][number];
+  isFirst: boolean;
+}) {
+  return (
+    <>
+      <p className="eyebrow eyebrow--on-media">{chapter.eyebrow}</p>
+      {isFirst
+        ? <h1 id="hero-heading" className="hero-chapter__heading">{chapter.heading}</h1>
+        : <h2 className="hero-chapter__heading">{chapter.heading}</h2>}
+      <p className="hero-chapter__body">{chapter.body}</p>
+      {(chapter.primaryCta || chapter.secondaryCta) && (
+        <p className="hero-chapter__actions">
+          {chapter.primaryCta && <a className="btn" href={chapter.primaryCta.href}>{chapter.primaryCta.label}</a>}
+          {chapter.secondaryCta && (
+            <a className="btn btn-secondary btn-secondary--on-media" href={chapter.secondaryCta.href}>
+              {chapter.secondaryCta.label}
+            </a>
+          )}
+        </p>
+      )}
+      {chapter.showScrollCue && <p className="hero-scroll-cue">Scroll to explore</p>}
+    </>
+  );
+}
+
+// Product images are always `${assets.productsDirectory}/${item.image}`;
+// a filename that tries to escape that directory is dropped rather than
+// resolved.
+function productImageSrc(productsDirectory: string, filename: string): string | null {
+  if (!filename || filename.includes("/") || filename.includes("\\") || filename.includes("..")) return null;
+  return `${productsDirectory}/${filename}`;
 }
 
 function ProductsRail({ config, reducedMotion }: { config: CinematicSiteConfig; reducedMotion: boolean }) {
@@ -216,8 +264,10 @@ function ProductsRail({ config, reducedMotion }: { config: CinematicSiteConfig; 
       const rect = track.getBoundingClientRect();
       const scrollable = rect.height - window.innerHeight;
       const progress = scrollable > 0 ? Math.min(1, Math.max(0, -rect.top / scrollable)) : 0;
-      const travel = Math.max(0, rail.scrollWidth - rail.clientWidth);
-      rail.style.transform = `translateX(-${progress * travel}px)`;
+      // Measured, never hardcoded: how far the rail has to travel is its own
+      // content width minus what fits on screen.
+      const travel = Math.max(0, rail.scrollWidth - window.innerWidth);
+      rail.style.transform = `translate3d(-${(progress * travel).toFixed(2)}px, 0, 0)`;
     };
     const onScroll = () => { if (!ticking) { ticking = true; requestAnimationFrame(update); } };
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -229,37 +279,55 @@ function ProductsRail({ config, reducedMotion }: { config: CinematicSiteConfig; 
     };
   }, [reducedMotion]);
 
-  const panels = (
-    <>
-      <div className="products-panel products-panel--intro">
-        <p className="eyebrow">{productsSection.eyebrow}</p>
-        <h2>{productsSection.heading}</h2>
-        <p className="muted">{productsSection.body}</p>
-      </div>
-      {productsSection.items.map((item) => (
-        <div className="products-panel" key={item.image}>
-          <img src={`${assets.productsDirectory}/${item.image}`} alt={item.alt ?? item.name} loading="lazy" />
-          <p className="eyebrow">{item.category}</p>
-          <h3>{item.name}</h3>
-          <p className="muted">{item.description}</p>
-        </div>
-      ))}
-    </>
+  const intro = (
+    <div className="products-panel products-panel--intro">
+      <p className="eyebrow">{productsSection.eyebrow}</p>
+      <h2>{productsSection.heading}</h2>
+      <p className="muted">{productsSection.body}</p>
+    </div>
   );
+
+  const items = productsSection.items.map((item: SiteProductItem) => {
+    const src = productImageSrc(assets.productsDirectory, item.image);
+    return (
+      <article className="products-panel" key={item.name}>
+        {src && <img src={src} alt={item.alt ?? item.name} loading="lazy" width={800} height={1000} />}
+        <p className="eyebrow">{item.category}</p>
+        <h3>{item.name}</h3>
+        <p className="muted">{item.description}</p>
+      </article>
+    );
+  });
 
   if (reducedMotion) {
     return (
-      <section id={productsSection.id} className="products-list">
-        {panels}
+      <section id={productsSection.id} className="products-list" aria-labelledby="products-heading">
+        <div className="products-panel products-panel--intro">
+          <p className="eyebrow">{productsSection.eyebrow}</p>
+          <h2 id="products-heading">{productsSection.heading}</h2>
+          <p className="muted">{productsSection.body}</p>
+        </div>
+        {items}
       </section>
     );
   }
 
   return (
-    <section id={productsSection.id} ref={trackRef} className="rail-track" style={{ height: `${productsSection.scrollHeightVh}vh` }}>
+    <section
+      id={productsSection.id}
+      ref={trackRef}
+      className="rail-track"
+      aria-labelledby="products-heading"
+      style={{ height: `${productsSection.scrollHeightVh}vh` }}
+    >
       <div className="rail-sticky">
         <div ref={railRef} className="products-rail">
-          {panels}
+          <div className="products-panel products-panel--intro">
+            <p className="eyebrow">{productsSection.eyebrow}</p>
+            <h2 id="products-heading">{productsSection.heading}</h2>
+            <p className="muted">{productsSection.body}</p>
+          </div>
+          {items}
         </div>
       </div>
     </section>

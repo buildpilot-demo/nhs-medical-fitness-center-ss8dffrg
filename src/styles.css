@@ -1,15 +1,21 @@
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-  --color-background: #0b0a08;
-  --color-surface: #15110d;
-  --color-text: #f5ebdd;
-  --color-muted: #b9aa96;
-  --color-accent: #e45a24;
-  --color-accent-hover: #ff7540;
-  --color-border: color-mix(in srgb, var(--color-text) 15%, transparent);
-  --color-danger: #f87171;
-  --color-success: #4ade80;
+  --color-background: #f8fafc;
+  --color-surface: #ffffff;
+  --color-text: #0f172a;
+  --color-muted: #64748b;
+  --color-accent: #0284c7;
+  --color-accent-hover: #0369a1;
+  --color-border: color-mix(in srgb, var(--color-text) 14%, transparent);
+  --color-danger: #b91c1c;
+  --color-success: #15803d;
+  /* Darkened variants of the configured palette so small text and button
+     labels clear WCAG AA against the light surfaces. */
+  --color-accent-strong: color-mix(in srgb, var(--color-accent) 80%, #000);
+  --color-muted-strong: color-mix(in srgb, var(--color-muted) 86%, #000);
+  --color-on-media: #ffffff;
+  --color-on-media-muted: color-mix(in srgb, #ffffff 88%, transparent);
 
   --space-1: 0.25rem;
   --space-2: 0.5rem;
@@ -34,10 +40,12 @@ body {
   margin: 0;
   background: var(--color-background);
   color: var(--color-text);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
 }
 
 a {
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
 }
 
 /* --- Layout primitives ---------------------------------------------- */
@@ -59,7 +67,7 @@ a {
   left: -9999px;
   top: 0;
   z-index: 100;
-  background: var(--color-accent);
+  background: var(--color-accent-strong);
   color: #fff;
   padding: var(--space-2) var(--space-4);
   border-radius: 0 0 var(--radius-sm) 0;
@@ -76,7 +84,9 @@ a {
   inset-block-start: 0;
   inset-inline: 0;
   z-index: 20;
-  background: linear-gradient(to bottom, color-mix(in srgb, var(--color-background) 55%, transparent), transparent);
+  background: color-mix(in srgb, var(--color-background) 82%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .site-header__bar {
@@ -119,7 +129,7 @@ a {
 }
 
 .site-nav a:hover {
-  color: var(--color-accent);
+  color: var(--color-accent-strong);
 }
 
 @media (max-width: 720px) {
@@ -148,7 +158,7 @@ a {
   border-top: 1px solid var(--color-border);
   margin-top: var(--space-12);
   padding-block: var(--space-8);
-  color: var(--color-muted);
+  color: var(--color-muted-strong);
   font-size: 0.9rem;
   max-width: var(--container-width);
   margin-inline: auto;
@@ -166,21 +176,40 @@ a {
 
 .eyebrow {
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-accent);
-  margin: 0 0 0.5rem;
+  font-weight: 700;
+  color: var(--color-accent-strong);
+  margin: 0 0 var(--space-3);
+}
+
+.eyebrow--on-media {
+  color: color-mix(in srgb, var(--color-accent) 40%, #ffffff);
 }
 
 h1 {
-  margin: 0 0 1rem;
-  font-size: 2.5rem;
+  margin: 0 0 var(--space-4);
+  font-size: clamp(2.25rem, 5vw, 3.5rem);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  margin: 0 0 var(--space-4);
+  font-size: clamp(1.75rem, 3.2vw, 2.5rem);
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+}
+
+h3 {
+  margin: 0 0 var(--space-2);
+  font-size: 1.25rem;
+  line-height: 1.25;
 }
 
 .muted {
-  color: var(--color-muted);
-  line-height: 1.6;
+  color: var(--color-muted-strong);
+  line-height: 1.65;
 }
 
 /* --- Buttons --------------------------------------------------------- */
@@ -195,12 +224,13 @@ h1 {
   padding: 0.6rem 1.2rem;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
-  background: var(--color-accent);
+  background: var(--color-accent-strong);
   color: #fff;
   text-decoration: none;
   font-weight: 600;
   font: inherit;
   cursor: pointer;
+  transition: background-color 150ms ease;
 }
 
 .btn:hover {
@@ -215,10 +245,20 @@ h1 {
 .btn-secondary {
   background: transparent;
   color: var(--color-text);
+  border-color: color-mix(in srgb, var(--color-text) 35%, transparent);
 }
 
 .btn-secondary:hover {
   background: var(--color-border);
+}
+
+.btn-secondary--on-media {
+  color: var(--color-on-media);
+  border-color: color-mix(in srgb, #ffffff 55%, transparent);
+}
+
+.btn-secondary--on-media:hover {
+  background: color-mix(in srgb, #ffffff 18%, transparent);
 }
 
 /* Back-compat alias for the original starter's single "button" class. */
@@ -322,14 +362,31 @@ h1 {
   display: block;
 }
 
+/* Legibility scrim: hero copy sits on photography, so it needs its own
+   on-media colours rather than the light page palette. */
+.hero-scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom, rgba(2, 6, 23, 0.55) 0%, rgba(2, 6, 23, 0.15) 35%, rgba(2, 6, 23, 0.78) 100%);
+}
+
+.hero-stage {
+  position: absolute;
+  inset: 0;
+  max-width: var(--container-width);
+  margin-inline: auto;
+}
+
 .hero-chapter {
   position: absolute;
   inset-inline: 0;
   bottom: 12%;
-  max-width: 640px;
+  max-width: 42rem;
   padding-inline: var(--space-6);
-  transition: opacity 400ms ease;
-  color: var(--color-text);
+  transition: opacity 450ms ease;
+  color: var(--color-on-media);
+  text-shadow: 0 1px 12px rgba(2, 6, 23, 0.55);
 }
 
 .hero-chapter[data-align="left"] {
@@ -341,10 +398,46 @@ h1 {
   text-align: right;
 }
 
+.hero-chapter__heading {
+  font-size: clamp(2.25rem, 5vw, 3.5rem);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  margin: 0 0 var(--space-4);
+  color: var(--color-on-media);
+}
+
+.hero-chapter__body {
+  margin: 0;
+  max-width: 34rem;
+  font-size: 1.0625rem;
+  color: var(--color-on-media-muted);
+}
+
+.hero-chapter[data-align="right"] .hero-chapter__body {
+  margin-inline-start: auto;
+}
+
+.hero-chapter__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.hero-chapter[data-align="right"] .hero-chapter__actions {
+  justify-content: flex-end;
+}
+
+.hero-chapter__actions .btn {
+  margin-right: 0;
+}
+
 .hero-scroll-cue {
-  margin-top: var(--space-4);
+  margin-top: var(--space-6);
   font-size: 0.8rem;
-  color: var(--color-muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-on-media-muted);
 }
 
 .hero-static {
@@ -362,7 +455,7 @@ h1 {
   display: flex;
   flex-direction: column;
   gap: var(--space-8);
-  padding: var(--space-8) var(--space-6);
+  padding: var(--space-12) var(--space-6);
   max-width: var(--container-width);
   margin-inline: auto;
 }
@@ -370,6 +463,33 @@ h1 {
 .hero-static .hero-chapter {
   position: static;
   max-width: none;
+  opacity: 1;
+  color: var(--color-text);
+  text-shadow: none;
+  padding-inline: 0;
+  text-align: start;
+}
+
+.hero-static .hero-chapter[data-align="right"] {
+  text-align: start;
+}
+
+.hero-static .hero-chapter__heading {
+  color: var(--color-text);
+}
+
+.hero-static .hero-chapter__body,
+.hero-static .hero-scroll-cue {
+  color: var(--color-muted-strong);
+}
+
+.hero-static .eyebrow--on-media {
+  color: var(--color-accent-strong);
+}
+
+.hero-static .btn-secondary--on-media {
+  color: var(--color-text);
+  border-color: color-mix(in srgb, var(--color-text) 35%, transparent);
 }
 
 /* --- Section 2: horizontal products/services rail ------------------------ */
@@ -385,42 +505,71 @@ h1 {
   overflow: hidden;
   display: flex;
   align-items: center;
+  padding-block-start: 4rem;
 }
 
 .products-rail {
   display: flex;
+  align-items: stretch;
   gap: var(--space-8);
   will-change: transform;
-  padding-inline: var(--space-6);
+  padding-inline: clamp(var(--space-6), 6vw, 5rem);
 }
 
 .products-panel {
   flex: 0 0 auto;
-  width: min(60vw, 480px);
+  width: min(58vw, 420px);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: 0 12px 32px -24px rgba(15, 23, 42, 0.6);
 }
 
 .products-panel--intro {
-  width: min(50vw, 400px);
+  width: min(50vw, 420px);
   display: flex;
   flex-direction: column;
   justify-content: center;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding-inline: 0;
 }
 
 .products-panel img {
   width: 100%;
-  aspect-ratio: 4 / 5;
+  aspect-ratio: 4 / 3;
   object-fit: cover;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   margin-bottom: var(--space-4);
+  background: color-mix(in srgb, var(--color-text) 6%, transparent);
+}
+
+.products-panel p:last-child {
+  margin-bottom: 0;
 }
 
 @media (max-width: 768px) {
   .products-panel {
-    width: 85vw;
+    width: 82vw;
   }
 
   .products-panel--intro {
-    width: 85vw;
+    width: 82vw;
+  }
+
+  .hero-chapter {
+    bottom: 8%;
+    max-width: none;
+  }
+
+  .hero-chapter[data-align="right"] {
+    text-align: start;
+  }
+
+  .hero-chapter[data-align="right"] .hero-chapter__actions {
+    justify-content: flex-start;
   }
 }
 
@@ -428,7 +577,7 @@ h1 {
   display: flex;
   flex-direction: column;
   gap: var(--space-8);
-  padding: var(--space-8) var(--space-6);
+  padding: var(--space-12) var(--space-6);
   max-width: var(--container-width);
   margin-inline: auto;
 }
@@ -476,7 +625,8 @@ h1 {
 /* --- Section 3: enquiry -------------------------------------------------- */
 
 .enquiry-section {
-  padding-block-start: var(--space-12);
+  padding-block-start: calc(var(--space-12) * 1.5);
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--color-accent) 6%, var(--color-background)), var(--color-background));
   opacity: 0;
   transform: translateY(24px);
   transition: opacity 500ms ease, transform 500ms ease;
@@ -490,10 +640,37 @@ h1 {
 .enquiry-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-8);
+  gap: clamp(var(--space-8), 5vw, 4rem);
   max-width: var(--container-width);
   margin-inline: auto;
   padding-inline: var(--space-6);
+  align-items: start;
+}
+
+.enquiry-details {
+  display: grid;
+  gap: var(--space-4);
+  margin: var(--space-8) 0 0;
+}
+
+.enquiry-details dt {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-muted-strong);
+}
+
+.enquiry-details dd {
+  margin: var(--space-1) 0 0;
+}
+
+.enquiry-form {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8);
+  box-shadow: 0 20px 48px -36px rgba(15, 23, 42, 0.7);
 }
 
 @media (max-width: 768px) {
@@ -513,6 +690,10 @@ h1 {
   .enquiry-section {
     opacity: 1;
     transform: none;
+    transition: none;
+  }
+
+  .hero-chapter {
     transition: none;
   }
 }
